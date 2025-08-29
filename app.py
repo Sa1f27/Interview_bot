@@ -3,8 +3,7 @@ import asyncio
 import base64
 import io
 import traceback
-import argparse
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -28,7 +27,6 @@ SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
 CHUNK_SIZE = 1024
 MODEL = "models/gemini-2.5-flash-preview-native-audio-dialog"
-DEFAULT_MODE = "camera"
 
 # Gemini client setup
 client = genai.Client(
@@ -62,7 +60,7 @@ pya = pyaudio.PyAudio()
 
 
 class AudioLoop:
-    def __init__(self, video_mode=DEFAULT_MODE, websocket: WebSocket = None):
+    def __init__(self, video_mode, websocket: WebSocket = None):
         self.video_mode = video_mode
         self.websocket = websocket
         self.audio_in_queue = asyncio.Queue()
@@ -162,7 +160,7 @@ class AudioLoop:
                 self.session = session
                 self.send_text_task = tg.create_task(self.send_text())
                 tg.create_task(self.send_realtime())
-                tg.create_task(self.listen_audio())
+                tg.create_task(self.listen_.audio())
                 if self.video_mode == "camera":
                     tg.create_task(self.get_frames())
                 elif self.video_mode == "screen":
@@ -179,23 +177,14 @@ class AudioLoop:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: "Request"):
+async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, mode: str = "none"):
     await websocket.accept()
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default=DEFAULT_MODE,
-        help="pixels to stream from",
-        choices=["camera", "screen", "none"],
-    )
-    args = parser.parse_args()
-    main = AudioLoop(video_mode=args.mode, websocket=websocket)
+    main = AudioLoop(video_mode=mode, websocket=websocket)
     await main.run()
 
 
