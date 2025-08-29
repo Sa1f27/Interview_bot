@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interviewer</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Interviewer</h1>
+        <div class="video-container">
+            <video id="video" autoplay></video>
+        </div>
+        <div class="controls">
+            <button id="start-btn">Start Interview</button>
+            <button id="stop-btn" disabled>Stop Interview</button>
+        </div>
+        <div class="conversation-container">
+            <div id="conversation"></div>
+        </div>
+        <div class="input-container">
+            <input type="text" id="message-input" placeholder="Type your message...">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
