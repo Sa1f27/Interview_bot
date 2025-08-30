@@ -79,6 +79,7 @@ stopBtn.addEventListener('click', () => {
 
 sendBtn.addEventListener('click', () => {
     if (websocket && websocket.readyState === WebSocket.OPEN) {
+        const message = messageInput.value;
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', 'user-message');
         messageDiv.textContent = message;
