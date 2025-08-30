@@ -8,24 +8,33 @@
 </head>
 <body>
     <div class="container">
-        <h1>AI Interviewer</h1>
+        <h1>AI Interview Practice</h1>
         <div class="options">
             <button id="camera-btn">Camera</button>
             <button id="screen-btn">Screen</button>
             <button id="none-btn">None</button>
         </div>
-        <div class="video-container">
-            <video id="video" autoplay></video>
-        </div>
-        <div class="controls">
-            <button id="stop-btn" disabled>Stop Interview</button>
-        </div>
-        <div class="conversation-container">
-            <div id="conversation"></div>
-        </div>
-        <div class="input-container">
-            <input type="text" id="message-input" placeholder="Type your message...">
-            <button id="send-btn">Send</button>
+        <div class="interview-layout">
+            <div class="video-grid">
+                <div class="video-wrapper" id="user-video-wrapper">
+                    <video id="video" autoplay></video>
+                    <div class="video-label">You</div>
+                </div>
+                <div class="video-wrapper" id="ai-video-wrapper">
+                    <div class="ai-placeholder">AI</div>
+                    <div class="video-label">Interviewer</div>
+                </div>
+            </div>
+            <div class="chat-container">
+                <div id="conversation"></div>
+                <div class="input-container">
+                    <input type="text" id="message-input" placeholder="Type your message...">
+                    <button id="send-btn">Send</button>
+                </div>
+                <div class="controls">
+                    <button id="stop-btn" disabled>Stop Interview</button>
+                </div>
+            </div>
         </div>
     </div>
     <script src="/static/script.js"></script>

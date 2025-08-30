@@ -12,8 +12,8 @@ import cv2
 import pyaudio
 import PIL.Image
 import mss
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 
 # FastAPI setup
 app = FastAPI()

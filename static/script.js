@@ -7,6 +7,10 @@ const messageInput = document.getElementById('message-input');
 const conversation = document.getElementById('conversation');
 const video = document.getElementById('video');
 
+function scrollToBottom() {
+    conversation.scrollTop = conversation.scrollHeight;
+}
+
 let websocket;
 let mediaStream;
 
@@ -25,8 +29,10 @@ function startInterview(mode) {
     websocket.onmessage = (event) => {
         if (typeof event.data === 'string') {
             const message = document.createElement('div');
+            message.classList.add('message', 'ai-message');
             message.textContent = event.data;
             conversation.appendChild(message);
+            scrollToBottom();
         } else {
             const audioContext = new AudioContext();
             const source = audioContext.createBufferSource();
@@ -73,8 +79,12 @@ stopBtn.addEventListener('click', () => {
 
 sendBtn.addEventListener('click', () => {
     if (websocket && websocket.readyState === WebSocket.OPEN) {
-        const message = messageInput.value;
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'user-message');
+        messageDiv.textContent = message;
+        conversation.appendChild(messageDiv);
         websocket.send(message);
         messageInput.value = '';
+        scrollToBottom();
     }
 });
