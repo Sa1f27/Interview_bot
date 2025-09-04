@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Bot</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div id="controls">
+            <button id="camera-btn">Camera</button>
+            <button id="screen-btn">Screen</button>
+            <button id="voice-btn">Voice</button>
+        </div>
+        <div id="video-container">
+            <div class="video-panel">
+                <h2>User</h2>
+                <video id="user-video" autoplay playsinline muted></video>
+            </div>
+            <div class="video-panel">
+                <h2>AI</h2>
+                <img id="ai-video" src="" alt="AI Stream">
+                <audio id="ai-audio" autoplay></audio>
+            </div>
+        </div>
+        <div id="logs">
+            <h2>Logs</h2>
+            <pre id="log-content"></pre>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>

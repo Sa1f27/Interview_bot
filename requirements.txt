@@ -8,3 +8,5 @@ pyaudio
 pillow
 mss
 python-multipart
+websockets
+python-dotenv

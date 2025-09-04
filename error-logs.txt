@@ -1,0 +1,108 @@
+
+(venv) C:\Users\huzai\vs-code-projects\interview-bot>uvicorn main:app --reload
+INFO:     Will watch for changes in these directories: ['C:\\Users\\huzai\\vs-code-projects\\interview-bot']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [33424] using StatReload
+WARNING:google_genai._api_client:Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+INFO:     Started server process [31352]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:61329 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60664 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61329 - "GET /static/script.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57846 - "WebSocket /ws" [accepted]
+INFO:main:Frontend connected.
+INFO:     connection open
+INFO:main:Starting interview bot in voice mode.
+INFO:google_genai.live:b'{\n  "setupComplete": {}\n}\n'
+INFO:     connection closed
+INFO:     127.0.0.1:57723 - "WebSocket /ws" [accepted]
+INFO:main:Frontend connected.
+INFO:     connection open
+INFO:main:Starting interview bot in screen mode.
+ERROR:main:Error during interview: unhandled errors in a TaskGroup (1 sub-exception)
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 74, in run
+  |     async with asyncio.TaskGroup() as tg:
+  |   File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\asyncio\taskgroups.py", line 145, in __aexit__
+  |     raise me from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 89, in receive_from_frontend
+    |     data = await self.websocket.receive_bytes()
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\starlette\websockets.py", line 127, in receive_bytes
+    |     self._raise_on_disconnect(message)
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\starlette\websockets.py", line 114, in _raise_on_disconnect  
+    |     raise WebSocketDisconnect(message["code"], message.get("reason"))
+    | starlette.websockets.WebSocketDisconnect: (<CloseCode.NO_STATUS_RCVD: 1005>, '')
+    +------------------------------------
+INFO:google_genai.live:b'{\n  "setupComplete": {}\n}\n'
+INFO:     127.0.0.1:64848 - "WebSocket /ws" [accepted]
+INFO:main:Frontend connected.
+INFO:     connection open
+INFO:     connection closed
+INFO:main:Starting interview bot in camera mode.
+ERROR:main:Error during interview: unhandled errors in a TaskGroup (1 sub-exception)
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 74, in run
+  |     async with asyncio.TaskGroup() as tg:
+  |   File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\asyncio\taskgroups.py", line 145, in __aexit__
+  |     raise me from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 89, in receive_from_frontend
+    |     data = await self.websocket.receive_bytes()
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\starlette\websockets.py", line 127, in receive_bytes
+    |     self._raise_on_disconnect(message)
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\starlette\websockets.py", line 114, in _raise_on_disconnect  
+    |     raise WebSocketDisconnect(message["code"], message.get("reason"))
+    | starlette.websockets.WebSocketDisconnect: (<CloseCode.NO_STATUS_RCVD: 1005>, '')
+    +------------------------------------
+INFO:google_genai.live:b'{\n  "setupComplete": {}\n}\n'
+[ WARN:0@58.297] global cap_msmf.cpp:476 `anonymous-namespace'::SourceReaderCB::OnReadSample videoio(MSMF): OnReadSample() is called with error status: -1072875772
+[ WARN:0@58.300] global cap_msmf.cpp:488 `anonymous-namespace'::SourceReaderCB::OnReadSample videoio(MSMF): async ReadSample() call is failed with error status: -1072875772
+[ WARN:1@58.300] global cap_msmf.cpp:1795 CvCapture_MSMF::grabFrame videoio(MSMF): can't grab frame. Error: -1072875772
+INFO:     127.0.0.1:51832 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     connection closed
+INFO:     127.0.0.1:54653 - "WebSocket /ws" [accepted]
+INFO:main:Frontend connected.
+INFO:     connection open
+INFO:main:Starting interview bot in voice mode.
+ERROR:main:Error during interview: unhandled errors in a TaskGroup (1 sub-exception)
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 74, in run
+  |     async with asyncio.TaskGroup() as tg:
+  |   File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\asyncio\taskgroups.py", line 145, in __aexit__
+  |     raise me from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 89, in receive_from_frontend
+    |     data = await self.websocket.receive_bytes()
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\starlette\websockets.py", line 127, in receive_bytes
+    |     self._raise_on_disconnect(message)
+    |   File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\starlette\websockets.py", line 114, in _raise_on_disconnect  
+    |     raise WebSocketDisconnect(message["code"], message.get("reason"))
+    | starlette.websockets.WebSocketDisconnect: (<CloseCode.NO_STATUS_RCVD: 1005>, '')
+    +------------------------------------
+ERROR:main:Error during interview: received 1011 (internal error) You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: h; then sent 1011 (internal error) You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: h
+Traceback (most recent call last):
+  File "C:\Users\huzai\vs-code-projects\interview-bot\main.py", line 72, in run
+    async with client.aio.live.connect(model=MODEL, config=CONFIG) as session:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\google\genai\live.py", line 1057, in connect
+    logger.info(await ws.recv(decode=False))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\huzai\vs-code-projects\interview-bot\venv\Lib\site-packages\websockets\asyncio\connection.py", line 322, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedError: received 1011 (internal error) You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: h; then sent 1011 (internal error) You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: h
+INFO:     127.0.0.1:61767 - "GET / HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:61767 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
