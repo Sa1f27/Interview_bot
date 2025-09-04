@@ -1,3 +1,16 @@
+"""
+## Documentation
+Quickstart: https://github.com/google-gemini/cookbook/blob/main/quickstarts/Get_started_LiveAPI.py
+
+## Setup
+
+To install the dependencies for this script, run:
+
+```
+pip install google-genai opencv-python pyaudio pillow mss
+```
+"""
+
 import os
 import asyncio
 import base64
@@ -9,6 +22,8 @@ import pyaudio
 import PIL.Image
 import mss
 
+import argparse
+
 from google import genai
 from google.genai import types
 
@@ -19,6 +34,8 @@ RECEIVE_SAMPLE_RATE = 24000
 CHUNK_SIZE = 1024
 
 MODEL = "models/gemini-2.5-flash-preview-native-audio-dialog"
+
+DEFAULT_MODE = "camera"
 
 client = genai.Client(
     http_options={"api_version": "v1beta"},
@@ -33,7 +50,7 @@ CONFIG = types.LiveConnectConfig(
     media_resolution="MEDIA_RESOLUTION_MEDIUM",
     speech_config=types.SpeechConfig(
         voice_config=types.VoiceConfig(
-            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Laomedeia")
+            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Zephyr")
         )
     ),
     context_window_compression=types.ContextWindowCompressionConfig(
@@ -46,9 +63,8 @@ pya = pyaudio.PyAudio()
 
 
 class AudioLoop:
-    def __init__(self, video_mode, websocket):
+    def __init__(self, video_mode=DEFAULT_MODE):
         self.video_mode = video_mode
-        self.websocket = websocket
 
         self.audio_in_queue = None
         self.out_queue = None
@@ -61,17 +77,25 @@ class AudioLoop:
 
     async def send_text(self):
         while True:
-            text = await self.websocket.receive_text()
+            text = await asyncio.to_thread(
+                input,
+                "message > ",
+            )
             if text.lower() == "q":
                 break
             await self.session.send(input=text or ".", end_of_turn=True)
 
     def _get_frame(self, cap):
+        # Read the frameq
         ret, frame = cap.read()
+        # Check if the frame was read successfully
         if not ret:
             return None
+        # Fix: Convert BGR to RGB color space
+        # OpenCV captures in BGR but PIL expects RGB format
+        # This prevents the blue tint in the video feed
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = PIL.Image.fromarray(frame_rgb)
+        img = PIL.Image.fromarray(frame_rgb)  # Now using RGB frame
         img.thumbnail([1024, 1024])
 
         image_io = io.BytesIO()
@@ -83,9 +107,11 @@ class AudioLoop:
         return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}
 
     async def get_frames(self):
+        # This takes about a second, and will block the whole program
+        # causing the audio pipeline to overflow if you don't to_thread it.
         cap = await asyncio.to_thread(
             cv2.VideoCapture, 0
-        )
+        )  # 0 represents the default camera
 
         while True:
             frame = await asyncio.to_thread(self._get_frame, cap)
@@ -96,6 +122,7 @@ class AudioLoop:
 
             await self.out_queue.put(frame)
 
+        # Release the VideoCapture object
         cap.release()
 
     def _get_screen(self):
@@ -151,16 +178,34 @@ class AudioLoop:
             await self.out_queue.put({"data": data, "mime_type": "audio/pcm"})
 
     async def receive_audio(self):
+        "Background task to reads from the websocket and write pcm chunks to the output queue"
         while True:
             turn = self.session.receive()
             async for response in turn:
                 if data := response.data:
-                    await self.websocket.send_bytes(data)
+                    self.audio_in_queue.put_nowait(data)
+                    continue
                 if text := response.text:
-                    await self.websocket.send_text(text)
+                    print(text, end="")
 
+            # If you interrupt the model, it sends a turn_complete.
+            # For interruptions to work, we need to stop playback.
+            # So empty out the audio queue because it may have loaded
+            # much more audio than has played yet.
             while not self.audio_in_queue.empty():
                 self.audio_in_queue.get_nowait()
+
+    async def play_audio(self):
+        stream = await asyncio.to_thread(
+            pya.open,
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=RECEIVE_SAMPLE_RATE,
+            output=True,
+        )
+        while True:
+            bytestream = await self.audio_in_queue.get()
+            await asyncio.to_thread(stream.write, bytestream)
 
     async def run(self):
         try:
@@ -182,6 +227,7 @@ class AudioLoop:
                     tg.create_task(self.get_screen())
 
                 tg.create_task(self.receive_audio())
+                tg.create_task(self.play_audio())
 
                 await send_text_task
                 raise asyncio.CancelledError("User requested exit")
@@ -191,3 +237,17 @@ class AudioLoop:
         except ExceptionGroup as EG:
             self.audio_stream.close()
             traceback.print_exception(EG)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default=DEFAULT_MODE,
+        help="pixels to stream from",
+        choices=["camera", "screen", "voice"],
+    )
+    args = parser.parse_args()
+    main = AudioLoop(video_mode=args.mode)
+    asyncio.run(main.run())
