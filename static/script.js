@@ -55,17 +55,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Get microphone access
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: (mode === 'camera') });
-            if (mode === 'camera') {
-                userVideo.srcObject = stream;
+            let stream;
+            if (mode === 'screen') {
+                stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            } else {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: (mode === 'camera') });
             }
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    ws.send(event.data);
+
+            if (stream) {
+                if (mode === 'camera' || mode === 'screen') {
+                    userVideo.srcObject = stream;
                 }
-            };
-            mediaRecorder.start(250); // Send data every 250ms
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        ws.send(event.data);
+                    }
+                };
+                mediaRecorder.start(250); // Send data every 250ms
+            }
         } catch (error) {
             logContent.textContent += `Error getting user media: ${error.message}\n`;
         }
