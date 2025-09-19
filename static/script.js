@@ -79,12 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const playAudio = () => {
+    const playAudio = async () => {
         if (audioChunks.length > 0 && !aiAudio.src) {
             const audioBlob = new Blob(audioChunks);
             aiAudio.src = URL.createObjectURL(audioBlob);
-            aiAudio.play();
             audioChunks = [];
+            try {
+                await aiAudio.play();
+            } catch (err) {
+                console.error('Error playing audio:', err);
+            }
             aiAudio.onended = () => {
                 aiAudio.src = null;
                 playAudio();
