@@ -30,7 +30,8 @@ audio/
 *.wav
 *.ogg
 *.webm
-
+rebuild_commits.ps1
+.ps1
 # === Environment & Credentials ===
 .env
 static/.env
