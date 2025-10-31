@@ -1,12 +1,8 @@
 fastapi
 uvicorn
+edge-tts
 pydantic
-pytest
-google-genai
-opencv-python
-pyaudio
-pillow
-mss
 python-multipart
 websockets
-python-dotenv
+psycopg2-binary
+groq

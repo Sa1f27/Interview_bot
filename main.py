@@ -1,195 +1,169 @@
-
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 import os
-import asyncio
-import base64
-import io
-import traceback
 import logging
 
-import cv2
-import pyaudio
-import PIL.Image
-import mss
+from database import fetch_latest_applicant, save_interview_summary
+from interview import test_manager, llm_manager, audio_manager, RESPONSE_TIMEOUT
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-
-from google import genai
-from google.genai import types
-
-# --- Logger Setup ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-# Create a file handler
-file_handler = logging.FileHandler('interview-bot.log')
-file_handler.setLevel(logging.DEBUG)
-# Create a console handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-# Create a formatter and set it for both handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-# Add the handlers to the logger
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
 
-# --- FastAPI Setup ---
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app = FastAPI(title="AI Interview API", version="3.0.0")
 
-# --- Gemini and Audio Config ---
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-SEND_SAMPLE_RATE = 16000
-RECEIVE_SAMPLE_RATE = 24000
-CHUNK_SIZE = 1024
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIO_DIR = os.path.join(BASE_DIR, "audio")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-MODEL = "models/gemini-2.5-flash-preview-native-audio-dialog"
+os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
 
-client = genai.Client(
-    http_options={"api_version": "v1beta"},
-    api_key=os.environ.get("GEMINI_API_KEY"),
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-CONFIG = types.LiveConnectConfig(
-    response_modalities=[
-        "AUDIO",
-    ],
-    media_resolution="MEDIA_RESOLUTION_MEDIUM",
-    speech_config=types.SpeechConfig(
-        voice_config=types.VoiceConfig(
-            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Zephyr")
-        )
-    ),
-    context_window_compression=types.ContextWindowCompressionConfig(
-        trigger_tokens=25600,
-        sliding_window=types.SlidingWindow(target_tokens=12800),
-    ),
-)
+app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-pya = pyaudio.PyAudio()
+@app.get("/", response_class=FileResponse)
+async def read_index():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.exists(index_path):
+        raise HTTPException(status_code=404, detail="index.html not found")
+    return FileResponse(index_path)
 
-# --- Main Application Logic ---
-import websockets
-
-class InterviewBot:
-    def __init__(self, mode: str, websocket: WebSocket):
-        self.mode = mode
-        self.websocket = websocket
-        self.session = None
-        self.out_queue = asyncio.Queue()
-
-    async def run(self):
-        logger.info(f"Starting interview bot in {self.mode} mode.")
-        try:
-            async with client.aio.live.connect(model=MODEL, config=CONFIG) as session:
-                self.session = session
-                async with asyncio.TaskGroup() as tg:
-                    tg.create_task(self.receive_from_frontend())
-                    tg.create_task(self.send_to_gemini())
-                    tg.create_task(self.receive_from_gemini())
-                    if self.mode == "camera":
-                        tg.create_task(self.get_frames())
-                    elif self.mode == "screen":
-                        tg.create_task(self.get_screen())
-        except websockets.exceptions.ConnectionClosedError as e:
-            error_message = f"Connection to Gemini API failed: {e}. Check your API key and quota."
-            logger.error(error_message)
-            await self.websocket.send_json({"type": "text", "data": error_message})
-            traceback.print_exc()
-        except Exception as e:
-            logger.error(f"Error during interview: {e}")
-            await self.websocket.send_json({"type": "text", "data": f"An unexpected error occurred: {e}"})
-            traceback.print_exc()
-
-    async def receive_from_frontend(self):
-        while True:
-            data = await self.websocket.receive_bytes()
-            await self.out_queue.put({"data": data, "mime_type": "audio/pcm"})
-
-    async def send_to_gemini(self):
-        while True:
-            msg = await self.out_queue.get()
-            await self.session.send(input=msg)
-
-    async def receive_from_gemini(self):
-        while True:
-            turn = self.session.receive()
-            async for response in turn:
-                if data := response.data:
-                    await self.websocket.send_bytes(data)
-                if text := response.text:
-                    logger.info(f"Gemini: {text}")
-                    await self.websocket.send_json({"type": "text", "data": text})
-
-
-    def _get_frame(self, cap):
-        ret, frame = cap.read()
-        if not ret:
-            return None
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = PIL.Image.fromarray(frame_rgb)
-        img.thumbnail([1024, 1024])
-
-        image_io = io.BytesIO()
-        img.save(image_io, format="jpeg")
-        image_io.seek(0)
-
-        mime_type = "image/jpeg"
-        image_bytes = image_io.read()
-        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}
-
-    async def get_frames(self):
-        cap = await asyncio.to_thread(cv2.VideoCapture, 0)
-        while True:
-            frame = await asyncio.to_thread(self._get_frame, cap)
-            if frame is None:
-                break
-            await self.out_queue.put(frame)
-            await self.websocket.send_json({"type": "video", "data": frame["data"]})
-            await asyncio.sleep(1.0)
-        cap.release()
-
-    def _get_screen(self):
-        sct = mss.mss()
-        monitor = sct.monitors[0]
-        i = sct.grab(monitor)
-        mime_type = "image/jpeg"
-        image_bytes = mss.tools.to_png(i.rgb, i.size)
-        img = PIL.Image.open(io.BytesIO(image_bytes))
-        image_io = io.BytesIO()
-        img.save(image_io, format="jpeg")
-        image_io.seek(0)
-        image_bytes = image_io.read()
-        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}
-
-    async def get_screen(self):
-        while True:
-            frame = await asyncio.to_thread(self._get_screen)
-            if frame is None:
-                break
-            await self.out_queue.put(frame)
-            await self.websocket.send_json({"type": "video", "data": frame["data"]})
-            await asyncio.sleep(1.0)
-
-# --- FastAPI Endpoints ---
-@app.get("/")
-async def get():
-    with open("templates/index.html") as f:
-        return HTMLResponse(content=f.read(), status_code=200)
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    logger.info("Frontend connected.")
+@app.post("/start_test")
+async def start_test():
     try:
-        # The first message from the frontend is the mode
-        mode = await websocket.receive_text()
-        bot = InterviewBot(mode, websocket)
-        await bot.run()
-    except WebSocketDisconnect:
-        logger.info("Frontend disconnected.")
+        logger.info("Starting new interview...")
+        applicant = fetch_latest_applicant()
+        
+        if not applicant or not applicant.get('ai_data'):
+            raise HTTPException(status_code=404, detail="No applicant found with AI data")
+
+        voice = audio_manager.get_random_voice()
+        # Pass applicant ID to test manager
+        test_id = test_manager.create_test(applicant['ai_data'], voice, applicant['id'])
+        
+        initial_question = llm_manager.generate_initial_greeting(applicant['ai_data'])
+        test_manager.add_entry(test_id, "assistant", initial_question)
+        
+        audio_path = await audio_manager.text_to_speech(initial_question, voice)
+        
+        return {
+            "test_id": test_id,
+            "question": initial_question,
+            "audio_path": audio_path,
+            "applicant_name": applicant.get('name', 'Candidate'),
+            "response_timeout": RESPONSE_TIMEOUT
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"Error starting test: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/interview/{test_id}")
+async def interview_step(test_id: str, request: Request):
+    try:
+        logger.info(f"Processing interview step for {test_id}")
+        test = test_manager.validate_test(test_id)
+        
+        if test.is_complete:
+            return {
+                "text": "Interview already completed. Thank you!",
+                "audio_path": None,
+                "ended": True
+            }
+        
+        audio_data = await request.body()
+        
+        # Handle timeout - if no audio or very small audio, treat as timeout
+        if not audio_data or len(audio_data) < 100:
+            logger.info("⏱️ Timeout or no audio - moving to next question")
+            user_response = "[No response within time limit]"
+        else:
+            logger.info(f"Received {len(audio_data)} bytes")
+            
+            # Transcribe with Whisper
+            user_response = audio_manager.transcribe_audio(audio_data)
+            
+            # If transcription fails (noisy environment), move forward
+            if not user_response:
+                logger.info("⏱️ Transcription failed - moving to next question")
+                user_response = "[Unable to understand response - background noise]"
+        
+        logger.info(f"User: {user_response}")
+        test_manager.add_entry(test_id, "user", user_response)
+        
+        # Generate next question with GPT
+        next_question = llm_manager.generate_next_question(test)
+        test_manager.add_entry(test_id, "assistant", next_question)
+        
+        interview_ended = (
+            "conclude" in next_question.lower() or 
+            "thank you for your time" in next_question.lower() or
+            test.question_index >= 6
+        )
+        
+        # If interview ended, save evaluation to database
+        if interview_ended:
+            test_manager.mark_complete(test_id)
+            logger.info(f"📝 Interview ended. Generating evaluation...")
+            try:
+                evaluation = llm_manager.generate_evaluation(test)
+                save_success = save_interview_summary(test.applicant_id, evaluation)
+                if not save_success:
+                    logger.warning("Failed to save summary to database")
+            except Exception as e:
+                logger.error(f"Error saving evaluation: {e}")
+        
+        # Convert to speech
+        audio_path = await audio_manager.text_to_speech(next_question, test.voice)
+        
+        return {
+            "text": next_question,
+            "audio_path": audio_path,
+            "ended": interview_ended,
+            "question_number": test.question_index,
+            "user_transcript": user_response,
+            "response_timeout": RESPONSE_TIMEOUT
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in interview step: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/summary/{test_id}")
+async def get_summary(test_id: str):
+    try:
+        test = test_manager.validate_test(test_id)
+        evaluation = llm_manager.generate_evaluation(test)
+        
+        return {
+            "summary": evaluation,
+            "conversation_log": test.conversation_log,
+            "question_count": test.question_index
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error generating summary: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "active_tests": len(test_manager.tests)}
+
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("Starting AI Interview Server")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
